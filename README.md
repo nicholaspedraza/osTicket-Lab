@@ -30,21 +30,21 @@ Windows 11 VM (end user)                      Ubuntu VM (osTicket server)
 
 Both VMs use the same Fusion NAT setting, so they share a private subnet and can reach each other and the internet.
 
-![Ubuntu VM network adapter set to Share with my Mac](screenshots/01-fusion-ubuntu-network-nat.png)
+![Ubuntu VM network adapter set to Share with my Mac](Screenshots/01-fusion-ubuntu-network-nat.png)
 *Ubuntu VM network adapter: "Share with my Mac" (NAT).*
 
-![Windows VM network adapter set to Share with my Mac](screenshots/02-fusion-windows-network-nat.png)
+![Windows VM network adapter set to Share with my Mac](Screenshots/02-fusion-windows-network-nat.png)
 *Windows VM network adapter: the same NAT setting.*
 
-![Fusion overview of the Ubuntu VM](screenshots/03-fusion-ubuntu-vm-overview.png)
+![Fusion overview of the Ubuntu VM](Screenshots/03-fusion-ubuntu-vm-overview.png)
 *Fusion overview of the server VM: 2 cores, 6144 MB RAM, Ubuntu 26.10, IP 192.168.157.128.*
 
 **Connectivity checks**
 
-![Ubuntu networking output and ping tests](screenshots/04-ubuntu-network-config-and-ping-tests.png)
+![Ubuntu networking output and ping tests](Screenshots/04-ubuntu-network-config-and-ping-tests.png)
 *Ubuntu: one IPv4 address (`192.168.157.128/24`), default route via `192.168.157.2` (static), and 4/4 replies from google.com.*
 
-![Windows ipconfig and ping to the server](screenshots/05-windows-ipconfig-and-ping-to-server.png)
+![Windows ipconfig and ping to the server](Screenshots/05-windows-ipconfig-and-ping-to-server.png)
 *Windows: `192.168.157.131/24` on a `vmxnet3` adapter, same subnet and gateway, and 4/4 replies when pinging the server.*
 
 The ping from Ubuntu to the Windows VM shows 100% loss while the reverse direction works. That is most likely Windows Defender Firewall dropping inbound ping by default, not a network fault. The Windows-to-Ubuntu direction is the one that matters for this lab.
@@ -53,25 +53,25 @@ The ping from Ubuntu to the Windows VM shows 100% loss while the reverse directi
 
 Apache, MySQL, and PHP were installed on the server and verified from the Windows client.
 
-![Listening ports and PHP version](screenshots/06-ubuntu-listening-ports-and-php-version.png)
+![Listening ports and PHP version](Screenshots/06-ubuntu-listening-ports-and-php-version.png)
 *`sudo ss -tlnp` shows Apache on port 80, SSH on 22, and MySQL bound to `127.0.0.1` only, so the database is not reachable from the network. `php -v` reports PHP 8.5.9.*
 
-![Apache default page loaded from the Windows VM](screenshots/07-windows-apache-default-page.png)
+![Apache default page loaded from the Windows VM](Screenshots/07-windows-apache-default-page.png)
 *The Apache default page loading in the Windows VM's browser at `http://192.168.157.128`.*
 
 ### 3. Database with least privilege
 
 I created a dedicated `osticket` database (utf8mb4) and an `osticket` account limited to that database, instead of letting the application use MySQL's root account.
 
-![MySQL setup and login test](screenshots/08-mysql-database-user-and-login-test.png)
+![MySQL setup and login test](Screenshots/08-mysql-database-user-and-login-test.png)
 *Database creation, user creation (password redacted), grants limited to `osticket.*`, and a login test. The first login attempt was denied; the second succeeded and lists only the built-in schemas plus `osticket` (details in the problems log).*
 
 ### 4. osTicket installation
 
-![Installer reporting the config file missing](screenshots/09-osticket-installer-config-file-missing.png)
+![Installer reporting the config file missing](Screenshots/09-osticket-installer-config-file-missing.png)
 *The installer (v1.18.4) reporting that `include/ost-config.php` did not exist yet.*
 
-![osTicket install complete](screenshots/10-osticket-install-success.png)
+![osTicket install complete](Screenshots/10-osticket-install-success.png)
 *After creating the config file from the sample, the installer completed and gave the portal and staff panel URLs.*
 
 ### 5. Hardening after install
@@ -83,21 +83,21 @@ I created a dedicated `osticket` database (utf8mb4) and an `osticket` account li
 | Web root `/var/www/html/osticket` | `drwxrwxrwx` (777) | `drwxr-xr-x` (755) |
 | Database account | n/a | Dedicated user limited to one database, localhost only |
 
-![Config file permissions before](screenshots/11-config-permissions-before.png)
+![Config file permissions before](Screenshots/11-config-permissions-before.png)
 *Config file permissions right after install: `-rw-rw-rw-`.*
 
-![Config permissions after and setup removed](screenshots/12-config-permissions-after-setup-removed.png)
+![Config permissions after and setup removed](Screenshots/12-config-permissions-after-setup-removed.png)
 *`chmod 0644` applied, `setup` directory deleted, and the directory listing no longer shows it.*
 
-![Web root listing showing 777 permissions](screenshots/13-web-root-listing-777-permissions.png)
+![Web root listing showing 777 permissions](Screenshots/13-web-root-listing-777-permissions.png)
 *Audit finding: the web root directory itself was `drwxrwxrwx`. Fixing it led to the 403 incident described below.*
 
 ### 6. Verification
 
-![Staff control panel](screenshots/14-osticket-staff-panel.png)
+![Staff control panel](Screenshots/14-osticket-staff-panel.png)
 *Staff control panel after install, showing the default "osTicket Installed!" ticket.*
 
-![Customer support portal](screenshots/15-osticket-customer-portal.png)
+![Customer support portal](Screenshots/15-osticket-customer-portal.png)
 *Customer-facing Support Center loading from the Windows VM.*
 
 ## Troubleshooting summary
@@ -137,5 +137,5 @@ helpdesk-lab/
   README.md
   docs/
     problems-and-fixes.md
-  screenshots/
+  Screenshots/
 ```
