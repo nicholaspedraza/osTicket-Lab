@@ -8,7 +8,7 @@ Each entry records what I saw, how I diagnosed it, the root cause, the fix, and 
 
 **Symptom:** During first-run setup the Windows VM showed no network adapter. The **Next** button stayed disabled and the screen offered an **Install driver** button.
 
-![Windows setup network screen](../screenshots/problem-01-windows-setup-no-network-driver.png)
+![Windows setup network screen](../Screenshots/problem-01-windows-setup-no-network-driver.png)
 
 **Root cause:** The Windows installer does not include a driver for the VM's virtual network adapter, so setup could not get online.
 
@@ -16,7 +16,7 @@ Each entry records what I saw, how I diagnosed it, the root cause, the fix, and 
 
 **Verification:** After setup, `ipconfig /all` shows a `vmxnet3 Ethernet Adapter` with `192.168.157.131/24`, gateway `192.168.157.2`, and a ping to the Ubuntu server returns 4/4 replies.
 
-![Windows ipconfig and successful ping](../screenshots/05-windows-ipconfig-and-ping-to-server.png)
+![Windows ipconfig and successful ping](../Screenshots/05-windows-ipconfig-and-ping-to-server.png)
 
 **Lesson:** A missing network driver in a VM is a guest-tools problem, not a network problem. Check the adapter in Fusion (NAT, connected) first, then the guest driver.
 
@@ -26,7 +26,7 @@ Each entry records what I saw, how I diagnosed it, the root cause, the fix, and 
 
 **Symptom:** Installing Apache, PHP, and MySQL ended with `Errors were encountered while processing: mysql-server` and `Sub-process /usr/bin/dpkg returned an error code (1)`. `df -h /` showed the root filesystem at **100%** with 15 MB available.
 
-![dpkg error with disk at 100 percent](../screenshots/problem-02-dpkg-error-disk-full.png)
+![dpkg error with disk at 100 percent](../Screenshots/problem-02-dpkg-error-disk-full.png)
 
 **Diagnosis:** The error message names the failing package, and `df -h /` explained why it failed: the 9.8 GB root volume was out of space, so MySQL's post-install configuration could not complete. The terminal prompt (`PS /home/admin1>`) also showed I was in PowerShell rather than bash, which I corrected before continuing.
 
@@ -40,7 +40,7 @@ Each entry records what I saw, how I diagnosed it, the root cause, the fix, and 
 
 **Verification:** `df -h /` now shows 37 GB total, 27 GB available, 25% used, and the MySQL installation completed (`mysqld` appears in the listening-ports output).
 
-![LVM resize commands and final df output](../screenshots/problem-02-lvm-resize-fix.png)
+![LVM resize commands and final df output](../Screenshots/problem-02-lvm-resize-fix.png)
 
 **Lesson:** Check `df -h /` before installing large packages, and do not assume the installer used the whole disk. When a command fails with `device not found`, verify the device name before trying anything else.
 
@@ -50,7 +50,7 @@ Each entry records what I saw, how I diagnosed it, the root cause, the fix, and 
 
 **Symptom:** `systemctl status` reported `State: degraded` with `Failed: 2 units`.
 
-![systemctl status showing degraded](../screenshots/problem-03-systemd-degraded-before.png)
+![systemctl status showing degraded](../Screenshots/problem-03-systemd-degraded-before.png)
 
 **Diagnosis:** `systemctl --failed` identifies the failed units. They were **`dnsmasq`** and **`apparmor`**. These were not part of the osTicket build: a half-configured MySQL install can also leave AppArmor reporting a failed profile, and `dnsmasq` is a DNS/DHCP service this lab does not use. **[FILL IN: the journalctl lines you saw for each unit]**
 
@@ -60,7 +60,7 @@ Each entry records what I saw, how I diagnosed it, the root cause, the fix, and 
 
 **Verification:** `systemctl status` now reports `State: running` and `Failed: 0 units`. Both screenshots show the same boot (`Since: Tue 2026-11-17 22:23:21 UTC`), so the fix did not require a reboot.
 
-![systemctl status showing running with zero failed units](../screenshots/problem-03-systemd-running-after.png)
+![systemctl status showing running with zero failed units](../Screenshots/problem-03-systemd-running-after.png)
 
 **Lesson:** "Degraded" is a summary. The useful command is `systemctl --failed`, followed by `journalctl -xeu <unit>` for the cause. Services that do not belong to the build should be disabled, not left failing.
 
@@ -70,7 +70,7 @@ Each entry records what I saw, how I diagnosed it, the root cause, the fix, and 
 
 **Symptom:** After creating the `osticket` database and user, the first login test returned `ERROR 1045 (28000): Access denied for user 'osticket'@'localhost' (using password: YES)`. The second attempt succeeded.
 
-![MySQL setup, denied login, then successful login](../screenshots/08-mysql-database-user-and-login-test.png)
+![MySQL setup, denied login, then successful login](../Screenshots/08-mysql-database-user-and-login-test.png)
 
 **Diagnosis:** Error 1045 means MySQL rejected the login for that account and host. The usual causes are a wrong password or a mismatched username or host, so the next step is to retry carefully with the exact credentials from the `CREATE USER` statement.
 
@@ -86,7 +86,7 @@ Each entry records what I saw, how I diagnosed it, the root cause, the fix, and 
 
 **Symptom:** Opening `/osticket/setup/` showed **Configuration file missing!** and a **Continue** button that did nothing useful.
 
-![Installer reporting config file missing](../screenshots/09-osticket-installer-config-file-missing.png)
+![Installer reporting config file missing](../Screenshots/09-osticket-installer-config-file-missing.png)
 
 **Diagnosis:** The page states what it needs: `include/ost-config.php` must exist and be writable. Only `include/ost-sampleconfig.php` was present after copying the application files.
 
@@ -96,7 +96,7 @@ Each entry records what I saw, how I diagnosed it, the root cause, the fix, and 
 
 **Verification:** The installer completed and showed the success page with the portal and staff control panel links.
 
-![osTicket installation complete](../screenshots/10-osticket-install-success.png)
+![osTicket installation complete](../Screenshots/10-osticket-install-success.png)
 
 **Lesson:** Installer error pages usually spell out the fix. The write permission is only needed during install, which is why the config file is locked down immediately afterward (see the README hardening table).
 
@@ -108,25 +108,25 @@ Each entry records what I saw, how I diagnosed it, the root cause, the fix, and 
 
 A permissions audit of the web root showed the directory itself was **`drwxrwxrwx` (777)**. Anyone who can log in to the system could add or replace files in that folder, and Apache would serve or execute them. For a PHP application, that is how a web shell gets planted.
 
-![Directory listing showing drwxrwxrwx on the web root](../screenshots/13-web-root-listing-777-permissions.png)
+![Directory listing showing drwxrwxrwx on the web root](../Screenshots/13-web-root-listing-777-permissions.png)
 
 ### What went wrong
 
 I tightened permissions with two `find` commands. The first correctly set directories to 755. The second was meant to set **files** to 644, but I typed `-type d` instead of `-type f`, so it applied 644 to every **directory**. Directories need the execute bit to be entered, so the web root became `drw-r--r--`.
 
-![find commands with the wrong type flag and the resulting permissions](../screenshots/problem-06-chmod-644-applied-to-directories.png)
+![find commands with the wrong type flag and the resulting permissions](../Screenshots/problem-06-chmod-644-applied-to-directories.png)
 
 ### Symptom
 
 Apache returned **403 Forbidden** for the staff control panel (and the portal) at `192.168.157.128/osticket/scp/`.
 
-![403 Forbidden in the browser](../screenshots/problem-06-403-forbidden.png)
+![403 Forbidden in the browser](../Screenshots/problem-06-403-forbidden.png)
 
 ### Diagnosis
 
 `namei -l /var/www/html/osticket/index.php` prints the permissions of every directory from `/` down to the file. Every parent directory was `drwxr-xr-x`, but `osticket` showed `drw-r--r--`, and the file lookup ended with **`index.php - Permission denied`**. That pinpoints the broken directory.
 
-![namei output showing the directory missing its execute bit](../screenshots/problem-06-namei-diagnosis.png)
+![namei output showing the directory missing its execute bit](../Screenshots/problem-06-namei-diagnosis.png)
 
 ### Root cause
 
@@ -140,9 +140,9 @@ Reapplied the correct modes separately: **755 for directories** (`find ... -type
 
 The web root is now `drwxr-xr-x` (755) instead of the original 777, and the portal loads again. The browser tab title for the staff panel is back to "osTicket :: Agent".
 
-![ls -ld showing drwxr-xr-x](../screenshots/problem-06-web-root-permissions-fixed.png)
+![ls -ld showing drwxr-xr-x](../Screenshots/problem-06-web-root-permissions-fixed.png)
 
-![Support portal loading again](../screenshots/problem-06-portal-restored.png)
+![Support portal loading again](../Screenshots/problem-06-portal-restored.png)
 
 ### Lesson
 
