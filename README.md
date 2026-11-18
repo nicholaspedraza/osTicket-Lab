@@ -109,9 +109,8 @@ Every issue I hit is documented in [`docs/problems-and-fixes.md`](docs/problems-
 | 1 | Windows setup had no usable network adapter | Installer lacked a driver for the VM's virtual NIC | Network working, client on the server's subnet |
 | 2 | Package install failed with a `dpkg` error | Root filesystem was 100% full | Logical volume extended from about 10 GB to 37 GB |
 | 3 | `systemctl` reported a degraded system state | Two failed services (`dnsmasq`, `apparmor`) | State back to `running`, 0 failed units |
-| 4 | New MySQL account was denied on first login | See log | Login succeeded, verified least-privilege access |
-| 5 | osTicket installer said the config file was missing | `ost-config.php` had not been created from the sample | Install completed |
-| 6 | Hardening the web root caused a 403 Forbidden | A `chmod 644` was applied to directories instead of files, removing their execute bit | Permissions corrected, site restored |
+| 4 | osTicket installer said the config file was missing | `ost-config.php` had not been created from the sample | Install completed |
+| 5 | Hardening the web root caused a 403 Forbidden | A `chmod 644` was applied to directories instead of files, removing their execute bit | Permissions corrected, site restored |
 
 ## Skills demonstrated
 
