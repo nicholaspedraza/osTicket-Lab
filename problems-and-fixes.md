@@ -1,19 +1,22 @@
 # Problems and Fixes Log
 
+Each entry records what I saw, how I diagnosed it, the root cause, the fix, and how I verified it. Entries are in the order they happened.
+
+---
 
 ## Problem 1: Windows 11 setup stuck on "Let's connect you to a network"
 
 **Symptom:** During first-run setup the Windows VM showed no network adapter. The **Next** button stayed disabled and the screen offered an **Install driver** button.
 
-![Windows setup network screen](Screenshots//problem-01-windows-setup-no-network-driver.png)
+![Windows setup network screen](Screenshots/problem-01-windows-setup-no-network-driver.png)
 
 **Root cause:** The Windows installer does not include a driver for the VM's virtual network adapter, so setup could not get online.
 
-**Fix:** used `oobe\bybassnro` to bypass network configuration during install, and installed VMware tools once the OS was loaded
+**Fix:** Bypassed the network requirement during setup with `oobe\bypassnro`, then installed VMware Tools once Windows had loaded.
 
 **Verification:** After setup, `ipconfig /all` shows a `vmxnet3 Ethernet Adapter` with `192.168.157.131/24`, gateway `192.168.157.2`, and a ping to the Ubuntu server returns 4/4 replies.
 
-![Windows ipconfig and successful ping](Screenshots//05-windows-ipconfig-and-ping-to-server.png)
+![Windows ipconfig and successful ping](Screenshots/05-windows-ipconfig-and-ping-to-server.png)
 
 **Lesson:** A missing network driver in a VM is a guest-tools problem, not a network problem. Check the adapter in Fusion (NAT, connected) first, then the guest driver.
 
@@ -29,19 +32,21 @@
 1. The error names the failing package: `mysql-server`. Apache and PHP finished configuring before it.
 2. `df -h /` showed the root filesystem (`/dev/mapper/ubuntu--vg-ubuntu--lv`) at **100%**: 9.8 GB total, 9.3 GB used, **15 MB available**. The failure most likely happened because MySQL's post-install configuration had no space to write.
 3. `vgs` without `sudo` printed `Permission denied` for the LVM lock file, so I reran it with `sudo`. It showed the volume group `ubuntu-vg` at **17.32 GB with 7.32 GB free (`VFree`)**.
-4. The prompt (`PS /home/admin1>`) and the window title (`/snap/bin/powershell`) show I was working in PowerShell, not bash.
+4. The prompt (`PS /home/admin1>`) shows I was working in PowerShell, not bash.
 
 **Root cause:** The root logical volume was about 9.8 GB inside a 17.32 GB volume group, so it filled up while 7.32 GB of the group sat unassigned.
 
-**Fix:** Assigned the free space to the root volume with `lvextend -r`, then claimed the remaining unused disk with `growpart`, `pvresize`, and a second `lvextend`. *The commands and their output are in `Screenshots/problem-02-lvm-resize-fix.png`; this screenshot shows only the problem and its diagnosis.*
+**Fix:**
+1. Extended the logical volume with the space already free in the volume group (`lvextend -r`).
+2. Grew the partition into the unused disk space with `growpart /dev/nvme0n1 3`.
+3. Told LVM about the larger partition with `pvresize /dev/nvme0n1p3`. My first attempt mistyped the name as `/dev/nvme01p3` and failed with `device not found`; I rechecked the device name and reran it correctly.
+4. Extended the logical volume and filesystem again with `lvextend -r --extents +100%FREE /dev/ubuntu-vg/ubuntu-lv`.
 
-**Verification:** `df -h /` afterward shows 37 GB total with 27 GB available (25% used), as captured in the resize screenshot.
+**Verification:** `df -h /` afterward shows 37 GB total with 27 GB available (25% used).
 
-**Lesson:** Check `df -h /` before installing large packages, and check `sudo vgs` when a volume is full, because the space may already exist and only need to be assigned.
+![LVM resize commands and final df output](Screenshots/problem-02-lvm-resize-fix.png)
 
-![LVM resize commands and final df output](Screenshots//problem-02-lvm-resize-fix.png)
-
-**Lesson:** Check `df -h /` before installing large packages, and do not assume the installer used the whole disk. When a command fails with `device not found`, verify the device name before trying anything else.
+**Lesson:** Check `df -h /` before installing large packages, and check `sudo vgs` when a volume is full, because the space may already exist and only need to be assigned. When a command fails with `device not found`, verify the device name before trying anything else.
 
 ---
 
@@ -49,17 +54,17 @@
 
 **Symptom:** `systemctl status` reported `State: degraded` with `Failed: 2 units`.
 
-![systemctl status showing degraded](Screenshots//problem-03-systemd-degraded-before.png)
+![systemctl status showing degraded](Screenshots/problem-03-systemd-degraded-before.png)
 
-**Diagnosis:** `systemctl --failed` identifies the failed units. They were **`dnsmasq`** and **`apparmor`**. These were not part of the osTicket build: a half-configured MySQL install can also leave AppArmor reporting a failed profile, and `dnsmasq` is a DNS/DHCP service this lab does not use.
+**Diagnosis:** `systemctl --failed` identifies the failed units. They were **`dnsmasq`** and **`apparmor`**. `dnsmasq` is a DNS/DHCP service this lab does not use, and a half-configured MySQL install can leave AppArmor reporting a failed profile.
 
-**Root cause:** apparmor failed because of the interrupted MySQL install; dnsmasq was not needed and was conflicting with the system resolver
+**Root cause:** `apparmor` failed because of the interrupted MySQL install. `dnsmasq` was not needed for this build.
 
-**Fix:** disables dnsmasq, removed apparmor, and reinstalled MySQL
+**Fix:** Disabled `dnsmasq` and reinstalled MySQL cleanly.
 
 **Verification:** `systemctl status` now reports `State: running` and `Failed: 0 units`. Both screenshots show the same boot (`Since: Tue 2026-11-17 22:23:21 UTC`), so the fix did not require a reboot.
 
-![systemctl status showing running with zero failed units](Screenshots//problem-03-systemd-running-after.png)
+![systemctl status showing running with zero failed units](Screenshots/problem-03-systemd-running-after.png)
 
 **Lesson:** "Degraded" is a summary. The useful command is `systemctl --failed`, followed by `journalctl -xeu <unit>` for the cause. Services that do not belong to the build should be disabled, not left failing.
 
@@ -69,7 +74,7 @@
 
 **Symptom:** Opening `/osticket/setup/` showed **Configuration file missing!** and a **Continue** button that did nothing useful.
 
-![Installer reporting config file missing](Screenshots//09-osticket-installer-config-file-missing.png)
+![Installer reporting config file missing](Screenshots/09-osticket-installer-config-file-missing.png)
 
 **Diagnosis:** The page states what it needs: `include/ost-config.php` must exist and be writable. Only `include/ost-sampleconfig.php` was present after copying the application files.
 
@@ -79,9 +84,9 @@
 
 **Verification:** The installer completed and showed the success page with the portal and staff control panel links.
 
-![osTicket installation complete](Screenshots//10-osticket-install-success.png)
+![osTicket installation complete](Screenshots/10-osticket-install-success.png)
 
-**Lesson:** Installer error pages usually spell out the fix. The write permission is only needed during install, which is why the config file is locked down immediately afterward (see the README hardening table).
+**Lesson:** Installer error pages usually spell out the fix. The write permission is only needed during install, which is why the config file is locked down immediately afterward.
 
 ---
 
@@ -91,25 +96,25 @@
 
 A permissions audit of the web root showed the directory itself was **`drwxrwxrwx` (777)**. Anyone who can log in to the system could add or replace files in that folder, and Apache would serve or execute them. For a PHP application, that is how a web shell gets planted.
 
-![Directory listing showing drwxrwxrwx on the web root](Screenshots//13-web-root-listing-777-permissions.png)
+![Directory listing showing drwxrwxrwx on the web root](Screenshots/13-web-root-listing-777-permissions.png)
 
 ### What went wrong
 
 I tightened permissions with two `find` commands. The first correctly set directories to 755. The second was meant to set **files** to 644, but I typed `-type d` instead of `-type f`, so it applied 644 to every **directory**. Directories need the execute bit to be entered, so the web root became `drw-r--r--`.
 
-![find commands with the wrong type flag and the resulting permissions](Screenshots//problem-06-chmod-644-applied-to-directories.png)
+![find commands with the wrong type flag and the resulting permissions](Screenshots/problem-06-chmod-644-applied-to-directories.png)
 
 ### Symptom
 
 Apache returned **403 Forbidden** for the staff control panel (and the portal) at `192.168.157.128/osticket/scp/`.
 
-![403 Forbidden in the browser](Screenshots//problem-06-403-forbidden.png)
+![403 Forbidden in the browser](Screenshots/problem-06-403-forbidden.png)
 
 ### Diagnosis
 
 `namei -l /var/www/html/osticket/index.php` prints the permissions of every directory from `/` down to the file. Every parent directory was `drwxr-xr-x`, but `osticket` showed `drw-r--r--`, and the file lookup ended with **`index.php - Permission denied`**. That pinpoints the broken directory.
 
-![namei output showing the directory missing its execute bit](Screenshots//problem-06-namei-diagnosis.png)
+![namei output showing the directory missing its execute bit](Screenshots/problem-06-namei-diagnosis.png)
 
 ### Root cause
 
@@ -121,15 +126,15 @@ Reapplied the correct modes separately: **755 for directories** (`find ... -type
 
 ### Verification
 
-The web root is now `drwxr-xr-x` (755) instead of the original 777, and the portal loads again. The browser tab title for the staff panel is back to "osTicket :: Agent".
+The web root is now `drwxr-xr-x` (755) instead of the original 777, and the portal loads again.
 
-![ls -ld showing drwxr-xr-x](Screenshots//problem-06-web-root-permissions-fixed.png)
+![ls -ld showing drwxr-xr-x](Screenshots/problem-06-web-root-permissions-fixed.png)
 
-![Support portal loading again](Screenshots//problem-06-portal-restored.png)
+![Support portal loading again](Screenshots/problem-06-portal-restored.png)
 
 ### Lesson
 
-- 777 on a web directory is a real vulnerability; the correct pattern is 755 for directories and 644 for files, with the application owner kept separate from the web server user.
+- 777 on a web directory is a real vulnerability; the correct pattern is 755 for directories and 644 for files.
 - Apply file and directory modes in **separate commands** and double-check the `-type` flag before pressing Enter.
 - Test immediately after a permission change, and keep a VM snapshot so a mistake is a quick rollback.
 - When access breaks after a change, trace the whole path with `namei -l` instead of guessing which folder is wrong.
@@ -139,5 +144,3 @@ The web root is now `drwxr-xr-x` (755) instead of the original 777, and the port
 ## Observation (not a fault): ping from Ubuntu to Windows times out
 
 From the Ubuntu server, `ping 192.168.157.131` shows 100% packet loss, while the Windows VM can ping the server with 0% loss and TTL 64 (a Linux host). Both are on the same subnet and gateway, so routing is fine. The likely explanation is that Windows Defender Firewall blocks inbound ICMP echo by default. Testing from the Windows client to the server is the direction that matters for a help desk portal. To confirm, I could allow ICMPv4 echo on Windows and retest, which would make a good future ticket scenario.
-
-Evidence: see the Ubuntu and Windows connectivity screenshots in the main [README](../README.md#1-virtual-network).
