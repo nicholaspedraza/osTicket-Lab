@@ -21,21 +21,23 @@
 
 ## Problem 2: Package install failed because the disk was full
 
-**Symptom:** Installing Apache, PHP, and MySQL ended with `Errors were encountered while processing: mysql-server` and `Sub-process /usr/bin/dpkg returned an error code (1)`. `df -h /` showed the root filesystem at **100%** with 15 MB available.
+**Symptom:** Installing the web stack (Apache and PHP 8.5.9 configured normally) ended with `Errors were encountered while processing: mysql-server`, then `needrestart is being skipped since dpkg has failed` and `Error: Sub-process /usr/bin/dpkg returned an error code (1)`.
 
-![dpkg error with disk at 100 percent](Screenshots//problem-02-dpkg-error-disk-full.png)
+![dpkg error, disk at 100 percent, and free space in the volume group](Screenshots/problem-02-dpkg-error-vgs-free-space.png)
 
-**Diagnosis:** The error message names the failing package, and `df -h /` explained why it failed: the 9.8 GB root volume was out of space, so MySQL's post-install configuration could not complete. The terminal prompt (`PS /home/admin1>`) also showed I was in PowerShell rather than bash, which I corrected before continuing.
+**Diagnosis:**
+1. The error names the failing package: `mysql-server`. Apache and PHP finished configuring before it.
+2. `df -h /` showed the root filesystem (`/dev/mapper/ubuntu--vg-ubuntu--lv`) at **100%**: 9.8 GB total, 9.3 GB used, **15 MB available**. The failure most likely happened because MySQL's post-install configuration had no space to write.
+3. `vgs` without `sudo` printed `Permission denied` for the LVM lock file, so I reran it with `sudo`. It showed the volume group `ubuntu-vg` at **17.32 GB with 7.32 GB free (`VFree`)**.
+4. The prompt (`PS /home/admin1>`) and the window title (`/snap/bin/powershell`) show I was working in PowerShell, not bash.
 
-**Root cause:** Ubuntu's default LVM layout gave the root logical volume only part of the virtual disk.
+**Root cause:** The root logical volume was about 9.8 GB inside a 17.32 GB volume group, so it filled up while 7.32 GB of the group sat unassigned.
 
-**Fix:**
-1. Extended the logical volume with the space already free in the volume group (`lvextend -r`), growing the root filesystem to 17 GB.
-2. Grew the partition into the unused disk space with `growpart /dev/nvme0n1 3`.
-3. Told LVM about the larger partition with `pvresize /dev/nvme0n1p3`. My first attempt mistyped the name as `/dev/nvme01p3` and failed with `device not found`; I rechecked the device name and reran it correctly.
-4. Extended the logical volume and filesystem again with `lvextend -r -l +100%FREE /dev/ubuntu-vg/ubuntu-lv`.
+**Fix:** Assigned the free space to the root volume with `lvextend -r`, then claimed the remaining unused disk with `growpart`, `pvresize`, and a second `lvextend`. *The commands and their output are in `Screenshots/problem-02-lvm-resize-fix.png`; this screenshot shows only the problem and its diagnosis.*
 
-**Verification:** `df -h /` now shows 37 GB total, 27 GB available, 25% used, and the MySQL installation completed (`mysqld` appears in the listening-ports output).
+**Verification:** `df -h /` afterward shows 37 GB total with 27 GB available (25% used), as captured in the resize screenshot.
+
+**Lesson:** Check `df -h /` before installing large packages, and check `sudo vgs` when a volume is full, because the space may already exist and only need to be assigned.
 
 ![LVM resize commands and final df output](Screenshots//problem-02-lvm-resize-fix.png)
 
@@ -49,11 +51,11 @@
 
 ![systemctl status showing degraded](Screenshots//problem-03-systemd-degraded-before.png)
 
-**Diagnosis:** `systemctl --failed` identifies the failed units. They were **`dnsmasq`** and **`apparmor`**. These were not part of the osTicket build: a half-configured MySQL install can also leave AppArmor reporting a failed profile, and `dnsmasq` is a DNS/DHCP service this lab does not use. **[FILL IN: the journalctl lines you saw for each unit]**
+**Diagnosis:** `systemctl --failed` identifies the failed units. They were **`dnsmasq`** and **`apparmor`**. These were not part of the osTicket build: a half-configured MySQL install can also leave AppArmor reporting a failed profile, and `dnsmasq` is a DNS/DHCP service this lab does not use.
 
-**Root cause:** **[FILL IN: for example, apparmor failed because of the interrupted MySQL install; dnsmasq was not needed and was conflicting with the system resolver]**
+**Root cause:** apparmor failed because of the interrupted MySQL install; dnsmasq was not needed and was conflicting with the system resolver
 
-**Fix:** **[FILL IN: the commands you ran, for example reinstalling MySQL cleanly, restarting apparmor, and disabling dnsmasq]**
+**Fix:** disables dnsmasq, removed apparmor, and reinstalled MySQL
 
 **Verification:** `systemctl status` now reports `State: running` and `Failed: 0 units`. Both screenshots show the same boot (`Since: Tue 2026-11-17 22:23:21 UTC`), so the fix did not require a reboot.
 
@@ -63,23 +65,7 @@
 
 ---
 
-## Problem 4: New MySQL account denied on the first login
-
-**Symptom:** After creating the `osticket` database and user, the first login test returned `ERROR 1045 (28000): Access denied for user 'osticket'@'localhost' (using password: YES)`. The second attempt succeeded.
-
-![MySQL setup, denied login, then successful login](Screenshots//08-mysql-database-user-and-login-test.png)
-
-**Diagnosis:** Error 1045 means MySQL rejected the login for that account and host. The usual causes are a wrong password or a mismatched username or host, so the next step is to retry carefully with the exact credentials from the `CREATE USER` statement.
-
-**Root cause:** **[FILL IN: for example, the password was mistyped on the first attempt]**
-
-**Fix and verification:** Retried with the correct credentials. The successful login lists only `information_schema`, `performance_schema`, and `osticket`, which confirms the account can see only its own database plus MySQL's built-in schemas. The grant was `ALL PRIVILEGES ON osticket.*` for `'osticket'@'localhost'`, so the account cannot reach any other database and cannot connect from another machine.
-
-**Lesson:** Test a new database account directly with the same credentials the application will use, before the installer depends on it. In the screenshot, the password is redacted; never commit real credentials.
-
----
-
-## Problem 5: osTicket installer says "Configuration file missing"
+## Problem 4: osTicket installer says "Configuration file missing"
 
 **Symptom:** Opening `/osticket/setup/` showed **Configuration file missing!** and a **Continue** button that did nothing useful.
 
@@ -99,7 +85,7 @@
 
 ---
 
-## Problem 6: World-writable web root, then 403 Forbidden after hardening
+## Problem 5: World-writable web root, then 403 Forbidden after hardening
 
 ### Finding
 
