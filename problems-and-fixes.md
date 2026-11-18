@@ -37,10 +37,11 @@ Each entry records what I saw, how I diagnosed it, the root cause, the fix, and 
 **Root cause:** The root logical volume was about 9.8 GB inside a 17.32 GB volume group, so it filled up while 7.32 GB of the group sat unassigned.
 
 **Fix:**
-1. Extended the logical volume with the space already free in the volume group (`lvextend -r`).
-2. Grew the partition into the unused disk space with `growpart /dev/nvme0n1 3`.
-3. Told LVM about the larger partition with `pvresize /dev/nvme0n1p3`. My first attempt mistyped the name as `/dev/nvme01p3` and failed with `device not found`; I rechecked the device name and reran it correctly.
-4. Extended the logical volume and filesystem again with `lvextend -r --extents +100%FREE /dev/ubuntu-vg/ubuntu-lv`.
+1. Extended the virtual disk in VMware Fusion from 20GB to 40GB, so the guest had more raw space than its original allocation.
+2. Extended the logical volume with the space already free in the volume group (`lvextend -r`).
+3. Grew the partition into the newly added disk space with `growpart /dev/nvme0n1 3`.
+4. Told LVM about the larger partition with `pvresize /dev/nvme0n1p3`. My first attempt mistyped the name as `/dev/nvme01p3` and failed with `device not found`; I rechecked the device name and reran it correctly.
+5. Extended the logical volume and filesystem again with `lvextend -r --extents +100%FREE /dev/ubuntu-vg/ubuntu-lv`.
 
 **Verification:** `df -h /` afterward shows 37 GB total with 27 GB available (25% used).
 
