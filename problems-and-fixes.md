@@ -9,7 +9,7 @@
 
 **Root cause:** The Windows installer does not include a driver for the VM's virtual network adapter, so setup could not get online.
 
-**Fix:** **used 'oobe\bybassnro' to bypass network configuration during install, and installed VMware tools once the OS was loaded**
+**Fix:** used `oobe\bybassnro` to bypass network configuration during install, and installed VMware tools once the OS was loaded
 
 **Verification:** After setup, `ipconfig /all` shows a `vmxnet3 Ethernet Adapter` with `192.168.157.131/24`, gateway `192.168.157.2`, and a ping to the Ubuntu server returns 4/4 replies.
 
