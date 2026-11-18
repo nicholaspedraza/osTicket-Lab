@@ -1,7 +1,5 @@
 # Problems and Fixes Log
 
-Each entry records what I saw, how I diagnosed it, the root cause, the fix, and how I verified it. Entries are in the order they happened. Items marked **[FILL IN]** are details only I can confirm from memory; replace them before publishing.
-
 ---
 
 ## Problem 1: Windows 11 setup stuck on "Let's connect you to a network"
