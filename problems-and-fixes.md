@@ -1,6 +1,5 @@
 # Problems and Fixes Log
 
----
 
 ## Problem 1: Windows 11 setup stuck on "Let's connect you to a network"
 
